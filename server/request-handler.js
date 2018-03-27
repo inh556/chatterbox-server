@@ -1,9 +1,4 @@
-var defaultCorsHeaders = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'access-control-allow-headers': 'content-type, accept',
-  'access-control-max-age': 10 // Seconds.
-};
+
 /*************************************************************
 
 You should implement your request handler function in this file.
@@ -18,6 +13,7 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 var messages = require('./classes/messages.js');
+var ObjectID = require('mongodb').ObjectID;
 console.log(messages);
 exports.requestHandler = function(request, response) {
   // Request and Response come from node's http module.
@@ -35,39 +31,52 @@ exports.requestHandler = function(request, response) {
   // debugging help, but you should always be careful about leaving stray
   // console.logs in your code.
   
-  var statusCode = 200;
+  
   
   console.log('Serving request type ' + request.method + ' for url ' + request.url);
-  if (request.method === 'POST') {
-    statusCode = 201;    
-  }
-  console.log(statusCode);
-
-  // The outgoing status.
+  var statusCode = 200;
   
+  if (request.url.indexOf('/classes/messages') === -1) {
+    statusCode = 404;
+  }
+  
+  if (request.method === 'POST') {
+    statusCode = 201;  
+    var body = [];
+    request.on('data', (chunk) => {
+      body.push(chunk);
+    }).on('end', () => {
+      body = Buffer.concat(body).toString();
+      body = JSON.parse(body)
+      body.createdAt = new Date();
+      body.objectId = new ObjectID();
+      body.updatedAt = body.createdAt
+      messages.data.results.unshift(body);
+      // at this point, `body` has the entire request body stored in it as a string
+    });
+  }
 
-  // See the note below about CORS headers.
-  var headers = defaultCorsHeaders;
-    
+    // See the note below about CORS headers.
+    var headers = defaultCorsHeaders;
+    // Tell the client we are sending them plain text.
+    //
+    // You will need to change this if you are sending something
+    // other than plain text, like JSON or HTML.
+    headers['Content-Type'] = 'application/json';
 
-  // Tell the client we are sending them plain text.
-  //
-  // You will need to change this if you are sending something
-  // other than plain text, like JSON or HTML.
-  headers['Content-Type'] = 'application/json';
+    // .writeHead() writes to the request line and headers of the response,
+    // which includes the status and all headers.
+    response.writeHead(statusCode, headers);
 
-  // .writeHead() writes to the request line and headers of the response,
-  // which includes the status and all headers.
-  response.writeHead(statusCode, headers);
-
-  // Make sure to always call response.end() - Node may not send
-  // anything back to the client until you do. The string you pass to
-  // response.end() will be the body of the response - i.e. what shows
-  // up in the browser.
-  //
-  // Calling .end "flushes" the response's internal buffer, forcing
-  // node to actually send all the data over to the client.
-  response.end(JSON.stringify(messages.data));
+    // Make sure to always call response.end() - Node may not send
+    // anything back to the client until you do. The string you pass to
+    // response.end() will be the body of the response - i.e. what shows
+    // up in the browser
+    //
+    // Calling .end "flushes" the response's internal buffer, forcing
+    // node to actually send all the data over to the client.
+    response.end(JSON.stringify(messages.data));
+  
 };
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
@@ -80,4 +89,9 @@ exports.requestHandler = function(request, response) {
 // Another way to get around this restriction is to serve you chat
 // client from this domain by setting up static file serving.
 
-
+var defaultCorsHeaders = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'access-control-allow-headers': 'content-type, accept',
+  'access-control-max-age': 10 // Seconds.
+};
