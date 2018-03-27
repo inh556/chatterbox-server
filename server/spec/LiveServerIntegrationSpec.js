@@ -37,7 +37,7 @@ describe('server', function() {
     var requestParams = {method: 'POST',
       uri: 'http://127.0.0.1:3000/classes/messages',
       json: {
-        username: 'Jono',
+        username: 'Bob',
         text: 'Do my bidding!'}
     };
 
@@ -69,6 +69,23 @@ describe('server', function() {
   it('Should 404 when asked for a nonexistent endpoint', function(done) {
     request('http://127.0.0.1:3000/arglebargle', function(error, response, body) {
       expect(response.statusCode).to.equal(404);
+      done();
+    });
+  });
+
+  it('Should 429 when same user send too many messages', function(done) {
+    var requestParams = {method: 'POST',
+      uri: 'http://127.0.0.1:3000/classes/messages',
+      json: {
+        username: 'Bono',
+        text: 'Do my bidding!'}
+    };
+    request(requestParams, function(error, response, body) {
+      expect(response.statusCode).to.equal(201);
+      done();
+    });
+    request(requestParams, function(error, response, body) {
+      expect(response.statusCode).to.equal(429);
       done();
     });
   });

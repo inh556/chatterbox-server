@@ -1,3 +1,9 @@
+var defaultCorsHeaders = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'access-control-allow-headers': 'content-type, accept',
+  'access-control-max-age': 10 // Seconds.
+};
 
 /*************************************************************
 
@@ -14,7 +20,6 @@ this file and include it in basic-server.js so that it actually works.
 **************************************************************/
 var messages = require('./classes/messages.js');
 var ObjectID = require('mongodb').ObjectID;
-console.log(messages);
 exports.requestHandler = function(request, response) {
   // Request and Response come from node's http module.
   //
@@ -39,6 +44,9 @@ exports.requestHandler = function(request, response) {
   if (request.url.indexOf('/classes/messages') === -1) {
     statusCode = 404;
   }
+
+
+  
   
   if (request.method === 'POST') {
     statusCode = 201;  
@@ -47,35 +55,54 @@ exports.requestHandler = function(request, response) {
       body.push(chunk);
     }).on('end', () => {
       body = Buffer.concat(body).toString();
-      body = JSON.parse(body)
+      body = JSON.parse(body);
+
+      // if(body.username === 'Steve') {
+      //   debugger;
+      // }
+      if (body.text.length < 1) {
+        statusCode = 400;
+      }
+
       body.createdAt = new Date();
       body.objectId = new ObjectID();
-      body.updatedAt = body.createdAt
+      body.updatedAt = body.createdAt;
+      var newUsername = body.username;
+      var lastUsername = messages.data.results[0].username;
+      var newCreatedAt = body.createdAt;
+      var lastCreatedAt = messages.data.results[0].createdAt;
+      if (newUsername === lastUsername) {
+        if((newCreatedAt - lastCreatedAt) < 1000) {
+
+          statusCode = 429;
+        }
+      }
+
       messages.data.results.unshift(body);
       // at this point, `body` has the entire request body stored in it as a string
     });
   }
 
-    // See the note below about CORS headers.
-    var headers = defaultCorsHeaders;
-    // Tell the client we are sending them plain text.
-    //
-    // You will need to change this if you are sending something
-    // other than plain text, like JSON or HTML.
-    headers['Content-Type'] = 'application/json';
+  // See the note below about CORS headers.
+  var headers = defaultCorsHeaders;
+  // Tell the client we are sending them plain text.
+  //
+  // You will need to change this if you are sending something
+  // other than plain text, like JSON or HTML.
+  headers['Content-Type'] = 'application/json';
 
-    // .writeHead() writes to the request line and headers of the response,
-    // which includes the status and all headers.
-    response.writeHead(statusCode, headers);
+  // .writeHead() writes to the request line and headers of the response,
+  // which includes the status and all headers.
+  response.writeHead(statusCode, headers);
 
-    // Make sure to always call response.end() - Node may not send
-    // anything back to the client until you do. The string you pass to
-    // response.end() will be the body of the response - i.e. what shows
-    // up in the browser
-    //
-    // Calling .end "flushes" the response's internal buffer, forcing
-    // node to actually send all the data over to the client.
-    response.end(JSON.stringify(messages.data));
+  // Make sure to always call response.end() - Node may not send
+  // anything back to the client until you do. The string you pass to
+  // response.end() will be the body of the response - i.e. what shows
+  // up in the browser
+  //
+  // Calling .end "flushes" the response's internal buffer, forcing
+  // node to actually send all the data over to the client.
+  response.end(JSON.stringify(messages.data));
   
 };
 
@@ -89,9 +116,3 @@ exports.requestHandler = function(request, response) {
 // Another way to get around this restriction is to serve you chat
 // client from this domain by setting up static file serving.
 
-var defaultCorsHeaders = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'access-control-allow-headers': 'content-type, accept',
-  'access-control-max-age': 10 // Seconds.
-};
